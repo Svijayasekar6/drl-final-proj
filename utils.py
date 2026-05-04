@@ -373,8 +373,11 @@ class BCWarmStartModel(TorchModelV2, nn.Module):
     def value_function(self):
         return self.value_head(self._last_feat).squeeze(1)
 
-
-ModelCatalog.register_custom_model("BCWarmStartModel", BCWarmStartModel)
+try:
+    ModelCatalog.register_custom_model("BCWarmStartModel", BCWarmStartModel)
+except AttributeError:
+    from ray.tune.registry import _global_registry, RLLIB_MODEL
+    _global_registry.register(RLLIB_MODEL, "BCWarmStartModel", BCWarmStartModel)
 
 
 def create_rllib_env(env_config: dict = {}):

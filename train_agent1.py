@@ -18,6 +18,10 @@ parser.add_argument("--mode", choices=["smoke", "full"], default="full",
                     help="smoke: 2M steps / 2h; full: 15M steps, no time cap")
 parser.add_argument("--restore", default="",
                     help="Checkpoint path to resume from (optional)")
+parser.add_argument("--num-gpus", type=int, default=1,
+                    help="GPUs for the learner (0 = CPU-only, matches --gres=gpu:N in batch)")
+parser.add_argument("--base-port", type=int, default=50039,
+                    help="Base Unity comm port — set uniquely per job to avoid conflicts")
 args = parser.parse_args()
 
 if args.mode == "smoke":
@@ -59,7 +63,7 @@ if __name__ == "__main__":
     ray.init()
 
     tune.registry.register_env("Soccer", create_rllib_env)
-    temp_env  = create_rllib_env({"num_envs_per_worker": 1})
+    temp_env  = create_rllib_env({"num_envs_per_worker": 1, "base_port": args.base_port})
     obs_space = temp_env.observation_space
     act_space = temp_env.action_space
     temp_env.close()
@@ -72,7 +76,7 @@ if __name__ == "__main__":
         restore=restore,
         config={
             # ── System ──────────────────────────────────────────────────────
-            "num_gpus":            1,
+            "num_gpus":            args.num_gpus,
             "num_workers":         8,
             "num_envs_per_worker": NUM_ENVS_PER_WORKER,
             "log_level":           "INFO",
@@ -84,6 +88,7 @@ if __name__ == "__main__":
                 "num_envs_per_worker": NUM_ENVS_PER_WORKER,
                 "shaped_rewards":      False,
                 "defensive_reward":    False,
+                "base_port":           args.base_port,
             },
             # ── Multi-agent self-play ─────────────────────────────────────────
             "multiagent": {

@@ -12,7 +12,7 @@ import ray
 from ray import tune
 from ray.rllib.agents.callbacks import DefaultCallbacks
 
-from utils import create_rllib_env, BCWarmStartModel
+from utils import create_rllib_env, BCWarmStartModel 
 
 # ── Args ──────────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser()
@@ -24,6 +24,10 @@ parser.add_argument(
 )
 parser.add_argument("--restore", default="",
                     help="RLLib checkpoint to resume from (optional)")
+parser.add_argument("--num-gpus", type=int, default=1,
+                    help="GPUs for the learner (0 = CPU-only, matches --gres=gpu:N in batch)")
+parser.add_argument("--base-port", type=int, default=50039,
+                    help="Base Unity comm port — set uniquely per job to avoid conflicts")
 args = parser.parse_args()
 
 BC_PATH = os.path.abspath(args.bc_checkpoint)
@@ -72,6 +76,7 @@ if __name__ == "__main__":
         "shaped_rewards":       True,
         "defensive_reward":     True,
         "anneal_shaped_rewards": True,
+        "base_port":            args.base_port,
     })
     obs_space = temp_env.observation_space
     act_space = temp_env.action_space
@@ -85,7 +90,7 @@ if __name__ == "__main__":
         restore=restore,
         config={
             # ── System ──────────────────────────────────────────────────────
-            "num_gpus":            1,
+            "num_gpus":            args.num_gpus,
             "num_workers":         8,
             "num_envs_per_worker": NUM_ENVS_PER_WORKER,
             "log_level":           "INFO",
@@ -99,6 +104,7 @@ if __name__ == "__main__":
                 "defensive_reward":     True,
                 "anneal_shaped_rewards": True,
                 "anneal_steps":         4_000_000,
+                "base_port":            args.base_port,
             },
             # ── Multi-agent self-play ─────────────────────────────────────────
             "multiagent": {

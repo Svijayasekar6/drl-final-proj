@@ -19,6 +19,12 @@ parser.add_argument("--mode", choices=["smoke", "full"], default="full",
                     help="smoke: 1M steps / 1h; full: 10M steps, no time cap")
 parser.add_argument("--restore", default="",
                     help="Checkpoint path to resume from (optional)")
+parser.add_argument("--num-gpus", type=int, default=1,
+                    help="GPUs for the learner (0 = CPU-only, matches --gres=gpu:N in batch)")
+parser.add_argument("--base-port", type=int, default=50039,
+                    help="Base Unity comm port — set uniquely per job to avoid conflicts")
+parser.add_argument("--max-steps", type=int, default=0,
+                    help="Override timesteps_total stop condition (0 = use mode default)")
 args = parser.parse_args()
 
 if args.mode == "smoke":
@@ -27,7 +33,7 @@ if args.mode == "smoke":
     CHECKPOINT_FREQ = 50
 else:
     RUN_NAME        = "PPO_agent2_full"
-    STOP_CONFIG     = {"timesteps_total": 10_000_000}
+    STOP_CONFIG     = {"timesteps_total": args.max_steps if args.max_steps else 10_000_000}
     CHECKPOINT_FREQ = 200
 
 SCRATCH             = os.environ.get("SCRATCH_DIR", "./ray_results")
@@ -64,6 +70,7 @@ if __name__ == "__main__":
         "num_envs_per_worker": 1,
         "shaped_rewards":      True,
         "defensive_reward":    True,
+        "base_port":           args.base_port,
     })
     obs_space = temp_env.observation_space 
     act_space = temp_env.action_space
@@ -77,7 +84,7 @@ if __name__ == "__main__":
         restore=restore,
         config={
             # ── System ──────────────────────────────────────────────────────
-            "num_gpus":            1,
+            "num_gpus":            args.num_gpus,
             "num_workers":         8,
             "num_envs_per_worker": NUM_ENVS_PER_WORKER,
             "log_level":           "INFO",
@@ -89,6 +96,7 @@ if __name__ == "__main__":
                 "num_envs_per_worker": NUM_ENVS_PER_WORKER,
                 "shaped_rewards":      True,   # ← only difference from Agent 1
                 "defensive_reward":    True,   # ← only difference from Agent 1
+                "base_port":           args.base_port,
             },
             # ── Multi-agent self-play ─────────────────────────────────────────
             "multiagent": {
